@@ -23,6 +23,29 @@ export const registerUser = async (email, password) => {
   }
 };
 
+// Enhanced tourist registration
+export const registerTouristUser = async (touristData) => {
+  try {
+    const { email, password, ...profileData } = touristData;
+    
+    // Create Firebase auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    // Create tourist profile document
+    const userData = await createTouristUserDoc(userCredential.user.uid, {
+      email,
+      ...profileData
+    });
+    
+    return {
+      user: userCredential.user,
+      profile: userData
+    };
+  } catch (error) {
+    throw mapAuthErrorToMessage(error);
+  }
+};
+
 export const loginUser = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -61,6 +84,54 @@ export const createUserDocIfNotExists = async (uid, email) => {
       profileImageUrl: null
     });
   }
+};
+
+// Enhanced tourist user creation
+export const createTouristUserDoc = async (uid, touristData) => {
+  const userRef = doc(db, 'users', uid);
+  
+  const userData = {
+    email: touristData.email,
+    name: touristData.name || null,
+    nationality: touristData.nationality,
+    passportNumber: touristData.passportNumber,
+    phoneNumber: touristData.phoneNumber,
+    emergencyContacts: touristData.emergencyContacts || [],
+    medicalInfo: touristData.medicalInfo || {
+      allergies: '',
+      medications: '',
+      conditions: '',
+      bloodType: ''
+    },
+    preferences: touristData.preferences || {
+      language: 'en',
+      accessibility: {
+        highContrast: false,
+        fontSize: 'medium',
+        voiceOver: false
+      }
+    },
+    verificationStatus: 'pending',
+    profileImageUrl: null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+  
+  await setDoc(userRef, userData);
+  return userData;
+};
+
+// Update user profile with tourist-specific fields
+export const updateTouristProfile = async (uid, updates) => {
+  const userRef = doc(db, 'users', uid);
+  
+  const updateData = {
+    ...updates,
+    updatedAt: serverTimestamp()
+  };
+  
+  await setDoc(userRef, updateData, { merge: true });
+  return updateData;
 };
 
 export const fetchUserDoc = async (uid) => {
